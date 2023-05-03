@@ -4,6 +4,7 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Windows.Forms;
@@ -144,8 +145,49 @@ namespace LinkeD365.FlowToVisio
                 {
                     LoadFlow(selectFlow, saveDialog.FileName, 1);
                 }
+                CompleteVisio(saveDialog.FileName);
             }
-            else
+            else if (selectedFlows.Count > 1)
+            {
+                var selectFlow = ((FlowDefinition)grdFlows.SelectedRows[0].DataBoundItem);
+
+                saveDialog.FileName = $"{selectFlow.Name}.vsdx";
+                if (saveDialog.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+
+                var fileinfo = new FileInfo(saveDialog.FileName);
+
+                foreach (DataGridViewRow selectedRow in selectedFlows)
+                {
+                    var selFlow = (FlowDefinition)selectedRow.DataBoundItem;
+                    var fileName = Path.Combine(fileinfo.Directory.FullName, $"{selFlow.Name}.vsdx");
+                    if (!File.Exists(fileName))
+                    {
+                        try
+                        {
+                            if (selFlow.Solution)
+                            {
+                                PopulateComment(selFlow);
+                                GenerateVisio(fileName, selFlow, 1, false);
+                            }
+                            else
+                            {
+                                LoadFlow(selFlow, fileName, 1);
+                            }
+                            CompleteVisio(fileName, false);
+
+                        }
+                        catch (Exception exception)
+                        {
+                            Console.WriteLine($"Failed to process: {fileName}");
+                            Console.WriteLine(exception);
+                        }
+                    }
+                }
+            }
+            else if (false)
             {
                 if (!splitTop.Panel2Collapsed && ddlSolutions.SelectedIndex > 0)
                 {
@@ -171,8 +213,8 @@ namespace LinkeD365.FlowToVisio
                         LoadFlow(selFlow, saveDialog.FileName, flowCount);
                     }
                 }
+                CompleteVisio(saveDialog.FileName);
             }
-            CompleteVisio(saveDialog.FileName);
         }
 
         public List<dynamic> Sort<T>(List<dynamic> input, string property)
