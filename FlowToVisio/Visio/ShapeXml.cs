@@ -172,7 +172,17 @@ namespace LinkeD365.FlowToVisio
             if (property.Value["inputs"]["body"] != null)
             {
                 sb.AppendLine("Body:");
-                foreach (var header in property.Value["inputs"]["body"] as JObject) sb.AppendLine(header.Key + " : " + header.Value);
+                if (property.Value["inputs"]["body"] is JObject jObject)
+                {
+                    foreach (var header in jObject)
+                    {
+                        sb.AppendLine(header.Key + " : " + header.Value);
+                    }
+                }
+                else if (property.Value["inputs"]["body"] is JToken jToken)
+                {
+                    sb.AppendLine(jToken.ToString());
+                }
             }
 
             AddText(sb);
