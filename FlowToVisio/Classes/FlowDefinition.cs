@@ -6,9 +6,9 @@ namespace LinkeD365.FlowToVisio
 {
     public class FlowDefinition
     {
-        public bool Solution;
-        public string Id;
-        public string Definition;
+        public bool Solution { get; set; }
+        public string Id { get; set; }
+        public string Definition { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public bool Managed { get; set; }
@@ -16,6 +16,8 @@ namespace LinkeD365.FlowToVisio
         public bool LogicApp { get; internal set; }
         [Browsable(false)]
         public string UniqueId { get; set; }
+
+        public string Status { get; set; }
 
         public List<Comment> Comments = new List<Comment>();
     }
