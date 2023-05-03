@@ -81,7 +81,7 @@ namespace LinkeD365.FlowToVisio
             {
                 if (_actionTemplate == null)
                 {
-#if DEBUG
+#if DEBUGx
                     _actionTemplate = JObject.Parse(File.ReadAllText(@"D:\Live\FlowToVisio\actions.json"));
 #else
                     string jsonString =
@@ -228,7 +228,6 @@ namespace LinkeD365.FlowToVisio
 
                         default:
                             Ai.WriteEvent("No Action: " + actionProperty.Value["type"]);
-
                             return new Action(actionProperty, parent, curCount, childCount);
                     }
                 }
