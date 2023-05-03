@@ -33,8 +33,9 @@ namespace LinkeD365.FlowToVisio
                 Work = (w, e) =>
                 {
                     var qe = new QueryExpression("workflow");
-                    qe.ColumnSet.AddColumns("ismanaged", "clientdata", "description", "name", "createdon", "modifiedon", "modifiedby", "createdby", "workflowidunique");
+                    qe.ColumnSet.AddColumns("ismanaged", "clientdata", "description", "name", "createdon", "modifiedon", "modifiedby", "createdby", "workflowidunique", "statuscodename");
                     qe.Criteria.AddCondition("category", ConditionOperator.Equal, 5);
+                    //qe.Criteria.AddCondition("statuscodename", ConditionOperator.NotEqual, "Draft");
                     List<FlowDefinition> flowList = new List<FlowDefinition>();
 
                     var flowRecords = Service.RetrieveMultiple(qe);
@@ -48,7 +49,8 @@ namespace LinkeD365.FlowToVisio
                             Description = !flowRecord.Attributes.Contains("description") ? string.Empty : flowRecord["description"].ToString(),
                             Solution = true,
                             Managed = (bool)flowRecord["ismanaged"],
-                            UniqueId = flowRecord["workflowidunique"].ToString()
+                            UniqueId = flowRecord["workflowidunique"].ToString(),
+                            Status = flowRecord["statuscodename"].ToString()
                         });
                     }
 
@@ -131,7 +133,7 @@ namespace LinkeD365.FlowToVisio
                 Work = (w, e) =>
                 {
                     var qe = new QueryExpression("workflow");
-                    qe.ColumnSet.AddColumns("ismanaged", "clientdata", "description", "name", "createdon", "modifiedon", "modifiedby", "createdby");
+                    qe.ColumnSet.AddColumns("ismanaged", "clientdata", "description", "name", "createdon", "modifiedon", "modifiedby", "createdby", "statuscodename");
                     qe.AddOrder("name", OrderType.Ascending);
                     qe.Criteria.AddCondition("category", ConditionOperator.Equal, 5);
                     var solComp = qe.AddLink("solutioncomponent", "workflowid", "objectid", JoinOperator.Inner);
@@ -152,7 +154,8 @@ namespace LinkeD365.FlowToVisio
                             Definition = flowRecord["clientdata"].ToString(),
                             Description = !flowRecord.Attributes.Contains("description") ? string.Empty : flowRecord["description"].ToString(),
                             Solution = true,
-                            Managed = (bool)flowRecord["ismanaged"]
+                            Managed = (bool)flowRecord["ismanaged"],
+                            Status = flowRecord["statuscodename"].ToString()
                         });
                     }
 

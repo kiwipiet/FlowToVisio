@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Packaging;
 using System.Linq;
 using System.Windows;
+using Newtonsoft.Json;
 using XrmToolBox.Extensibility;
 
 namespace LinkeD365.FlowToVisio
@@ -30,6 +31,10 @@ namespace LinkeD365.FlowToVisio
         {
             CreateVisio(fileName);
             JObject flowObject = JObject.Parse(flow.Definition);
+            var fileinfo = new FileInfo(fileName);
+
+            File.WriteAllText(Path.Combine(fileinfo.Directory.FullName, flow.Status, fileinfo.Name.Replace(fileinfo.Extension, ".json")), flowObject.ToString(Formatting.Indented));
+
             //CreateConnections();
             Utils.Root = flowObject;
             Connection.SetAPIs(flowObject);
@@ -37,7 +42,7 @@ namespace LinkeD365.FlowToVisio
 
             var triggerShape = Utils.AddAction(triggerProperty, null, 0, 1);
             Utils.AddComment(triggerShape);
-            if (flowObject["properties"]["definition"]["actions"].Children<JProperty>().Where(a => !a.Value["runAfter"].HasValues).Any())
+            if (flowObject["properties"]["definition"]["actions"].Children<JProperty>().Any(a => !a.Value["runAfter"].HasValues))
                 Utils.AddActions(flowObject["properties"]["definition"]["actions"].Children<JProperty>().Where(a => !a.Value["runAfter"].HasValues), triggerShape);
 
             foreach (var shapeName in Utils.VisioTemplates)
@@ -50,20 +55,22 @@ namespace LinkeD365.FlowToVisio
             Utils.totalVisio += 1;
             Utils.totalActions += Utils.actionCount;
             Utils.actionCount = 0;
-
-            return;
         }
 
-        public void CompleteVisio(string fileName)
+        public void CompleteVisio(string fileName, bool startVisio = true)
         {
             RemoveTemplate();
             RecalcDocument(package);
             package.Close();
-            if (MessageBox.Show($@"{Utils.totalVisio} Visio{(Utils.totalVisio > 1 ? "s" : "")} generated with {Utils.totalActions} actions.{Environment.NewLine}Do you want to open the file?", "Visio Created Succesfully",
-                MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            if (startVisio)
             {
-                Process.Start(fileName);
+                if (MessageBox.Show($@"{Utils.totalVisio} Visio{(Utils.totalVisio > 1 ? "s" : "")} generated with {Utils.totalActions} actions.{Environment.NewLine}Do you want to open the file?", "Visio Created Succesfully",
+                        MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                {
+                    Process.Start(fileName);
+                }
             }
+
             package = null;
             Utils.totalActions = 0;
             Utils.totalVisio = 0;
@@ -78,20 +85,13 @@ namespace LinkeD365.FlowToVisio
                 // var template = Package.Open(new MemoryStream(Properties.Resources.VisioTemplate),
                 // FileMode.Open); template.
 
-                #region get to the xml of the page
-
                 package = Package.Open(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             }
             document = GetPackagePart(package, "http://schemas.microsoft.com/visio/2010/relationships/document");
 
             pages = GetPackagePart(package, document, "http://schemas.microsoft.com/visio/2010/relationships/pages");
             page = GetPackagePart(package, pages, "http://schemas.microsoft.com/visio/2010/relationships/page");
-            ;
             Utils.XMLPage = GetXMLFromPart(page);
-
-            #endregion get to the xml of the page
-
-            return;
         }
     }
 }
