@@ -4,12 +4,18 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Windows.Forms;
+using DotNetGraph;
+using DotNetGraph.Edge;
+using DotNetGraph.Extensions;
+using DotNetGraph.Node;
 using XrmToolBox.Extensibility;
 using XrmToolBox.Extensibility.Interfaces;
+using Newtonsoft.Json.Linq;
 
 namespace LinkeD365.FlowToVisio
 {
@@ -159,33 +165,43 @@ namespace LinkeD365.FlowToVisio
 
                 var fileinfo = new FileInfo(saveDialog.FileName);
 
+                var flowDefinitions = new List<FlowDefinition>(selectedFlows.Count);
                 foreach (DataGridViewRow selectedRow in selectedFlows)
                 {
                     var selFlow = (FlowDefinition)selectedRow.DataBoundItem;
-                    var fileName = Path.Combine(fileinfo.Directory.FullName, $"{selFlow.Name}.vsdx");
-                    if (!File.Exists(fileName))
+                    flowDefinitions.Add(selFlow);
+                    char[] invalidPathChars = Path.GetInvalidPathChars();
+                    string fileName = selFlow.Name;
+                    foreach (char invalidPathChar in invalidPathChars)
+                    {
+                        fileName = fileName.Replace(invalidPathChar, '_');
+                    }
+                    var fileFullPath = Path.Combine(fileinfo.Directory.FullName, selFlow.Status, $"{fileName}.vsdx");
+                    if (!File.Exists(fileFullPath))
                     {
                         try
                         {
                             if (selFlow.Solution)
                             {
                                 PopulateComment(selFlow);
-                                GenerateVisio(fileName, selFlow, 1, false);
+                                GenerateVisio(fileFullPath, selFlow, 1, false);
                             }
                             else
                             {
-                                LoadFlow(selFlow, fileName, 1);
+                                LoadFlow(selFlow, fileFullPath, 1);
                             }
-                            CompleteVisio(fileName, false);
+                            CompleteVisio(fileFullPath, false);
 
                         }
                         catch (Exception exception)
                         {
-                            Console.WriteLine($"Failed to process: {fileName}");
+                            Console.WriteLine($"Failed to process: {fileFullPath}");
                             Console.WriteLine(exception);
                         }
                     }
                 }
+
+                GenerateDotGraph(flowDefinitions, fileinfo.Directory);
             }
             else if (false)
             {
@@ -215,6 +231,94 @@ namespace LinkeD365.FlowToVisio
                 }
                 CompleteVisio(saveDialog.FileName);
             }
+        }
+
+        private void GenerateDotGraph(List<FlowDefinition> flowDefinitions, DirectoryInfo directory)
+        {
+            var directedGraph = new DotGraph("Flows", true);
+            foreach (var flowDefinition in flowDefinitions)
+            {
+                if (flowDefinition.Status == "Draft")
+                {
+                    continue;
+                }
+                var myNode = new DotNode(flowDefinition.UniqueId)
+                {
+                    Shape = DotNodeShape.Box,
+                    Label = flowDefinition.Name,
+                    FillColor = Color.Coral,
+                    FontColor = Color.Black,
+                    Style = DotNodeStyle.Solid,
+                    Width = 0.5f,
+                    Height = 0.5f,
+                    PenWidth = 1f
+                };
+                directedGraph.Elements.Add(myNode);
+
+                var flowObject = JObject.Parse(flowDefinition.Definition);
+                var triggerProperty = flowObject["properties"]?["definition"]?["triggers"].FirstOrDefault() as JProperty;
+                if (triggerProperty != null)
+                {
+                    var triggerParameters = triggerProperty.Value["inputs"]?["parameters"];
+                    if (triggerParameters != null)
+                    {
+                        var triggerNode = GetTriggerNode(directedGraph, triggerParameters);
+                        if (triggerNode != null)
+                        {
+                            var filter = (triggerParameters["subscriptionRequest/filterexpression"] as JValue)?.Value.ToString();
+                            if (filter == null)
+                                filter = (triggerParameters["subscriptionRequest/filteringattributes"] as JValue)?.Value.ToString();
+                            if (filter != null)
+                            {
+                                var myEdge = new DotEdge(myNode, triggerNode)
+                                {
+                                    ArrowHead = DotEdgeArrowType.Crow,
+                                    ArrowTail = DotEdgeArrowType.Diamond,
+                                    Color = Color.Red,
+                                    FontColor = Color.Black,
+                                    Label = filter.Replace(" or ", "\nor ").Replace(" and ", "\nand "),
+                                    Style = DotEdgeStyle.Dashed,
+                                    PenWidth = 1.5f
+                                };
+
+                                directedGraph.Elements.Add(myEdge);
+                            }
+                        }
+                    }
+                }
+            }
+            var dot = directedGraph.Compile(true);
+            File.WriteAllText(Path.Combine(directory.FullName, "flows.dot"), dot);
+        }
+
+        private static DotNode GetTriggerNode(DotGraph directedGraph, JToken triggerParameters)
+        {
+            var entityName = (triggerParameters["subscriptionRequest/entityname"] as JValue).Value.ToString();
+
+            foreach (var directedGraphElement in directedGraph.Elements)
+            {
+                if (directedGraphElement is DotNode x)
+                {
+                    if (x.Identifier == entityName)
+                    {
+                        return x;
+                    }
+                }
+            }
+
+            var triggerNode = new DotNode(entityName)
+            {
+                Shape = DotNodeShape.Box,
+                Label = entityName,
+                FillColor = Color.Coral,
+                FontColor = Color.Firebrick,
+                Style = DotNodeStyle.Solid,
+                Width = 0.5f,
+                Height = 0.5f,
+                PenWidth = 1f
+            };
+            directedGraph.Elements.Add(triggerNode);
+            return triggerNode;
         }
 
         public List<dynamic> Sort<T>(List<dynamic> input, string property)

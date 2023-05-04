@@ -152,84 +152,82 @@ namespace LinkeD365.FlowToVisio
                 {
                     return new Action(actionProperty, parent, curCount, childCount);
                 }
-                else
+
+                var templateAction = CreateTemplateAction(actionProperty, parent, curCount, childCount);
+                if (templateAction != null)
                 {
-                    var templateAction = CreateTemplateAction(actionProperty, parent, curCount, childCount);
-                    if (templateAction != null)
-                    {
-                        return templateAction;
-                    }
+                    return templateAction;
+                }
 
-                    switch (actionProperty.Value["type"].ToString())
-                    {
-                        case "InitializeVariable":
-                            return new InitVariable(actionProperty, parent, curCount, childCount);
+                switch (actionProperty.Value["type"].ToString())
+                {
+                    case "InitializeVariable":
+                        return new InitVariable(actionProperty, parent, curCount, childCount);
 
-                        case "SetVariable":
-                            return new SetVariable(actionProperty, parent, curCount, childCount);
+                    case "SetVariable":
+                        return new SetVariable(actionProperty, parent, curCount, childCount);
 
-                        case "Http":
-                            return new HttpAction(actionProperty, parent, curCount, childCount);
+                    case "Http":
+                        return new HttpAction(actionProperty, parent, curCount, childCount);
 
-                        case "Response":
-                            return new HttpResponse(actionProperty, parent, curCount, childCount);
+                    case "Response":
+                        return new HttpResponse(actionProperty, parent, curCount, childCount);
 
-                        case "Request":
-                            return CreateRequestAction(actionProperty, parent, curCount, childCount);
+                    case "Request":
+                        return CreateRequestAction(actionProperty, parent, curCount, childCount);
 
-                        case "If":
-                            return new IfAction(actionProperty, parent, curCount, childCount);
+                    case "If":
+                        return new IfAction(actionProperty, parent, curCount, childCount);
 
-                        case "Switch":
-                            return new SwitchAction(actionProperty, parent, curCount, childCount);
+                    case "Switch":
+                        return new SwitchAction(actionProperty, parent, curCount, childCount);
 
-                        case "Foreach":
-                            return new ForEachAction(actionProperty, parent, curCount, childCount);
+                    case "Foreach":
+                        return new ForEachAction(actionProperty, parent, curCount, childCount);
 
-                        case "Terminate":
-                            return new Terminate(actionProperty, parent, curCount, childCount);
+                    case "Terminate":
+                        return new Terminate(actionProperty, parent, curCount, childCount);
 
-                        case "ApiConnection":
-                        case "OpenApiConnection":
-                            return CreateAPIAction(actionProperty, parent, curCount, childCount);
+                    case "ApiConnection":
+                    case "OpenApiConnection":
+                        return CreateAPIAction(actionProperty, parent, curCount, childCount);
 
-                        case "Scope":
-                            return new ScopeAction(actionProperty, parent, curCount, childCount);
+                    case "Scope":
+                        return new ScopeAction(actionProperty, parent, curCount, childCount);
 
-                        case "Compose":
-                            return new ComposeAction(actionProperty, parent, curCount, childCount);
+                    case "Compose":
+                        return new ComposeAction(actionProperty, parent, curCount, childCount);
 
-                        case "Table":
-                            return new TableAction(actionProperty, parent, curCount, childCount);
+                    case "Table":
+                        return new TableAction(actionProperty, parent, curCount, childCount);
 
-                        case "Query":
-                            return new FilterAction(actionProperty, parent, curCount, childCount);
+                    case "Query":
+                        return new FilterAction(actionProperty, parent, curCount, childCount);
 
-                        case "Join":
-                            return new JoinAction(actionProperty, parent, curCount, childCount);
+                    case "Join":
+                        return new JoinAction(actionProperty, parent, curCount, childCount);
 
-                        case "ParseJson":
-                            return new ParseAction(actionProperty, parent, curCount, childCount);
+                    case "ParseJson":
+                        return new ParseAction(actionProperty, parent, curCount, childCount);
 
-                        case "Select":
-                            return new SelectAction(actionProperty, parent, curCount, childCount);
+                    case "Select":
+                        return new SelectAction(actionProperty, parent, curCount, childCount);
 
-                        case "Until":
-                            return new UntilAction(actionProperty, parent, curCount, childCount);
+                    case "Until":
+                        return new UntilAction(actionProperty, parent, curCount, childCount);
 
-                        case "OpenApiConnectionWebhook":
-                            return CreateWebhook(actionProperty, parent, curCount, childCount);
+                    case "OpenApiConnectionWebhook":
+                        return CreateWebhook(actionProperty, parent, curCount, childCount);
 
-                        case "Recurrence":
-                            return new RecurrenceAction(actionProperty, parent, curCount, childCount);
+                    case "Recurrence":
+                        return new RecurrenceAction(actionProperty, parent, curCount, childCount);
 
-                        case "Changeset":
-                            return new ChangeSetAction(actionProperty, parent, curCount, childCount);
+                    case "Changeset":
+                        return new ChangeSetAction(actionProperty, parent, curCount, childCount);
 
-                        default:
-                            Ai.WriteEvent("No Action: " + actionProperty.Value["type"]);
-                            return new Action(actionProperty, parent, curCount, childCount);
-                    }
+                    default:
+                        Ai.WriteEvent("No Action: " + actionProperty.Value["type"]);
+                        return new Action(actionProperty, parent, curCount, childCount);
                 }
             }
             catch (Exception exc)

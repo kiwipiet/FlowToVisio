@@ -29,11 +29,16 @@ namespace LinkeD365.FlowToVisio
 
         public void GenerateVisio(string fileName, FlowDefinition flow, int flowCount, bool logicApp = false)
         {
+            var fileinfo = new FileInfo(fileName);
+            if (!fileinfo.Directory.Exists)
+            {
+                fileinfo.Directory.Create();
+            }
+
             CreateVisio(fileName);
             JObject flowObject = JObject.Parse(flow.Definition);
-            var fileinfo = new FileInfo(fileName);
 
-            File.WriteAllText(Path.Combine(fileinfo.Directory.FullName, flow.Status, fileinfo.Name.Replace(fileinfo.Extension, ".json")), flowObject.ToString(Formatting.Indented));
+            File.WriteAllText(Path.Combine(fileinfo.Directory.FullName, fileinfo.Name.Replace(fileinfo.Extension, ".json")), flowObject.ToString(Formatting.Indented));
 
             //CreateConnections();
             Utils.Root = flowObject;
