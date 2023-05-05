@@ -1,8 +1,4 @@
-﻿using LinkeD365.FlowToVisio.Properties;
-using McTools.Xrm.Connection;
-using Microsoft.Xrm.Sdk;
-using Microsoft.Xrm.Sdk.Query;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -13,15 +9,25 @@ using DotNetGraph;
 using DotNetGraph.Edge;
 using DotNetGraph.Extensions;
 using DotNetGraph.Node;
+using LinkeD365.FlowToVisio.Properties;
+using McTools.Xrm.Connection;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
+using Newtonsoft.Json.Linq;
 using XrmToolBox.Extensibility;
 using XrmToolBox.Extensibility.Interfaces;
-using Newtonsoft.Json.Linq;
 
 namespace LinkeD365.FlowToVisio
 {
     public partial class FlowToVisioControl : PluginControlBase, IGitHubPlugin, INoConnectionRequired, IPayPalPlugin
     {
+        private HttpClient _client;
         private bool overrideSave;
+
+        public FlowToVisioControl()
+        {
+            InitializeComponent();
+        }
 
         public string RepositoryName => "FlowToVisio";
         public string UserName => "LinkeD365";
@@ -29,11 +35,6 @@ namespace LinkeD365.FlowToVisio
         public string DonationDescription => "Flow to Visio Fans";
 
         public string EmailAccount => "carl.cookson@gmail.com";
-
-        public FlowToVisioControl()
-        {
-            InitializeComponent();
-        }
 
         private void FlowToVisioControl_Load(object sender, EventArgs e)
         {
@@ -57,19 +58,20 @@ namespace LinkeD365.FlowToVisio
                                     Name = "Flow Connection"
                                 });
                     }
+
                     if (!string.IsNullOrEmpty(flowConnection.SubscriptionId))
                     {
                         aPIConnections.LogicAppConns
-                           .Add(
-                               new LogicAppConn
-                               {
-                                   AppId = flowConnection.LAAppId,
-                                   TenantId = flowConnection.LATenantId,
-                                   ReturnURL = flowConnection.LAReturnURL,
-                                   SubscriptionId = flowConnection.SubscriptionId,
-                                   UseDev = flowConnection.UseDev,
-                                   Name = "LA Connection"
-                               });
+                            .Add(
+                                new LogicAppConn
+                                {
+                                    AppId = flowConnection.LAAppId,
+                                    TenantId = flowConnection.LATenantId,
+                                    ReturnURL = flowConnection.LAReturnURL,
+                                    SubscriptionId = flowConnection.SubscriptionId,
+                                    UseDev = flowConnection.UseDev,
+                                    Name = "LA Connection"
+                                });
                     }
 
                     return;
@@ -78,6 +80,7 @@ namespace LinkeD365.FlowToVisio
             catch (Exception)
             {
             }
+
             if (!SettingsManager.Instance.TryLoad(GetType(), out aPIConnections))
             {
                 aPIConnections = new APIConns();
@@ -99,16 +102,17 @@ namespace LinkeD365.FlowToVisio
         }
 
         /// <summary>
-        /// This
-        /// event
-        /// occurs
-        /// when the
-        /// connection
-        /// has been
-        /// updated
-        /// in XrmToolBox
+        ///     This
+        ///     event
+        ///     occurs
+        ///     when the
+        ///     connection
+        ///     has been
+        ///     updated
+        ///     in XrmToolBox
         /// </summary>
-        public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail, string actionName, object parameter)
+        public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail,
+            string actionName, object parameter)
         {
             base.UpdateConnection(newService, detail, actionName, parameter);
 
@@ -132,7 +136,7 @@ namespace LinkeD365.FlowToVisio
             Utils.Display = aPIConnections.Display;
             if (selectedFlows.Count == 1)
             {
-                var selectFlow = ((FlowDefinition)grdFlows.SelectedRows[0].DataBoundItem);
+                var selectFlow = (FlowDefinition)grdFlows.SelectedRows[0].DataBoundItem;
 
                 saveDialog.FileName = selectFlow.Name + ".vsdx";
                 if (saveDialog.ShowDialog() != DialogResult.OK)
@@ -149,11 +153,12 @@ namespace LinkeD365.FlowToVisio
                 {
                     LoadFlow(selectFlow, saveDialog.FileName, 1);
                 }
+
                 CompleteVisio(saveDialog.FileName);
             }
             else if (selectedFlows.Count > 1)
             {
-                var selectFlow = ((FlowDefinition)grdFlows.SelectedRows[0].DataBoundItem);
+                var selectFlow = (FlowDefinition)grdFlows.SelectedRows[0].DataBoundItem;
 
                 saveDialog.FileName = $"{selectFlow.Name}.vsdx";
                 if (saveDialog.ShowDialog() != DialogResult.OK)
@@ -178,11 +183,14 @@ namespace LinkeD365.FlowToVisio
                     {
                         fileName = fileName.Replace(invalidPathChar, '_');
                     }
-                    var fileFullPath = Path.Combine(fileinfo.Directory.FullName, selFlow.CategoryDescription, selFlow.Status, $"{fileName}.vsdx");
+
+                    string fileFullPath = Path.Combine(fileinfo.Directory.FullName, selFlow.CategoryDescription,
+                        selFlow.Status, $"{fileName}.vsdx");
                     if (!new FileInfo(fileFullPath).Directory.Exists)
                     {
                         new FileInfo(fileFullPath).Directory.Create();
                     }
+
                     if (!File.Exists(fileFullPath))
                     {
                         try
@@ -190,7 +198,7 @@ namespace LinkeD365.FlowToVisio
                             if (selFlow.Solution)
                             {
                                 PopulateComment(selFlow);
-                                GenerateVisio(fileFullPath, selFlow, 1, false);
+                                GenerateVisio(fileFullPath, selFlow, 1);
                             }
                             else
                             {
@@ -203,8 +211,6 @@ namespace LinkeD365.FlowToVisio
                                     CompleteVisio(fileFullPath, false);
                                     break;
                             }
-                            
-
                         }
                         catch (Exception exception)
                         {
@@ -213,6 +219,7 @@ namespace LinkeD365.FlowToVisio
                         }
                     }
                 }
+
                 GenerateDotGraph(flowDefinitions, fileinfo.Directory);
             }
             else if (false)
@@ -222,11 +229,13 @@ namespace LinkeD365.FlowToVisio
                     saveDialog.FileName = ddlSolutions.Text + ".vsdx";
                 }
                 else saveDialog.FileName = "My Flows.vsdx";
+
                 if (saveDialog.ShowDialog() != DialogResult.OK)
                 {
                     return;
                 }
-                int flowCount = 0;
+
+                var flowCount = 0;
                 foreach (DataGridViewRow selectedRow in selectedFlows)
                 {
                     flowCount++;
@@ -234,13 +243,14 @@ namespace LinkeD365.FlowToVisio
                     if (selFlow.Solution)
                     {
                         PopulateComment(selFlow);
-                        GenerateVisio(saveDialog.FileName, selFlow, flowCount, false);
+                        GenerateVisio(saveDialog.FileName, selFlow, flowCount);
                     }
                     else
                     {
                         LoadFlow(selFlow, saveDialog.FileName, flowCount);
                     }
                 }
+
                 CompleteVisio(saveDialog.FileName);
             }
         }
@@ -254,11 +264,13 @@ namespace LinkeD365.FlowToVisio
                 {
                     continue;
                 }
+
                 if (flowDefinition.Status == "Draft")
                 {
                     continue;
                 }
-                var myNode = new DotNode(flowDefinition.UniqueId)
+
+                var myNode = new DotNode(flowDefinition.Id)
                 {
                     Shape = DotNodeShape.Box,
                     Label = flowDefinition.Name,
@@ -272,25 +284,28 @@ namespace LinkeD365.FlowToVisio
                 directedGraph.Elements.Add(myNode);
 
                 var flowObject = flowDefinition.DefinitionJObject;
-                var triggerProperty = flowObject["properties"]?["definition"]?["triggers"].FirstOrDefault() as JProperty;
+                var triggerProperty =
+                    flowObject["properties"]?["definition"]?["triggers"].FirstOrDefault() as JProperty;
                 if (triggerProperty != null)
                 {
                     var triggerParameters = triggerProperty.Value["inputs"]?["parameters"];
                     if (triggerParameters != null)
                     {
-                        var triggerNode = GetTriggerNode(directedGraph, triggerParameters);
+                        var triggerNode = GetOrCreateTriggerNode(directedGraph, triggerParameters);
                         if (triggerNode != null)
                         {
-                            var filter = (triggerParameters["subscriptionRequest/filterexpression"] as JValue)?.Value.ToString();
+                            var filter = (triggerParameters["subscriptionRequest/filterexpression"] as JValue)?.Value
+                                .ToString();
                             if (filter == null)
-                                filter = (triggerParameters["subscriptionRequest/filteringattributes"] as JValue)?.Value.ToString();
+                                filter = (triggerParameters["subscriptionRequest/filteringattributes"] as JValue)?.Value
+                                    .ToString();
                             if (filter != null)
                             {
                                 var myEdge = new DotEdge(myNode, triggerNode)
                                 {
-                                    ArrowHead = DotEdgeArrowType.Crow,
+                                    ArrowHead = DotEdgeArrowType.Normal,
                                     ArrowTail = DotEdgeArrowType.Diamond,
-                                    Color = Color.Red,
+                                    Color = Color.Firebrick,
                                     FontColor = Color.Black,
                                     Label = filter.Replace(" or ", "\nor ").Replace(" and ", "\nand "),
                                     Style = DotEdgeStyle.Dashed,
@@ -303,22 +318,71 @@ namespace LinkeD365.FlowToVisio
                     }
                 }
             }
-            var dot = directedGraph.Compile(true);
+
+            foreach (var flowDefinition in flowDefinitions)
+            {
+                if (flowDefinition.Category != 5) // only modern flow for now
+                {
+                    continue;
+                }
+
+                if (flowDefinition.Status == "Draft")
+                {
+                    continue;
+                }
+
+                var workflowReferences = flowDefinition.DefinitionJObject
+                    .DescendantsAndSelf()
+                    .OfType<JObject>()
+                    .Where(o => o["workflowReferenceName"] != null)
+                    .Select(o => o.First)
+                    .OfType<JProperty>()
+                    .Select(o => o.First)
+                    .OfType<JValue>()
+                    .Select(o => o.Value.ToString())
+                    .ToList();
+                if (workflowReferences.Count > 0)
+                {
+                    var node = directedGraph.Elements
+                        .OfType<DotNode>()
+                        .FirstOrDefault(element => element.Identifier == flowDefinition.Id);
+                    foreach (var workflowReference in workflowReferences)
+                    {
+                        var childNode = directedGraph.Elements
+                            .OfType<DotNode>()
+                            .FirstOrDefault(element => element.Identifier == workflowReference);
+                        if (childNode != null)
+                        {
+                            var myEdge = new DotEdge(node, childNode)
+                            {
+                                ArrowHead = DotEdgeArrowType.Normal,
+                                ArrowTail = DotEdgeArrowType.Diamond,
+                                Color = Color.Brown,
+                                FontColor = Color.Black,
+                                Label = "",
+                                Style = DotEdgeStyle.Dotted,
+                                PenWidth = 1.5f
+                            };
+
+                            directedGraph.Elements.Add(myEdge);
+                        }
+                    }
+                }
+            }
+
+            string dot = directedGraph.Compile(true);
             File.WriteAllText(Path.Combine(directory.FullName, "flows.dot"), dot);
         }
 
-        private static DotNode GetTriggerNode(DotGraph directedGraph, JToken triggerParameters)
+        private static DotNode GetOrCreateTriggerNode(DotGraph directedGraph, JToken triggerParameters)
         {
             var entityName = (triggerParameters["subscriptionRequest/entityname"] as JValue).Value.ToString();
 
             foreach (var directedGraphElement in directedGraph.Elements)
             {
-                if (directedGraphElement is DotNode x)
+                if (directedGraphElement is DotNode x && x.Identifier == entityName)
                 {
-                    if (x.Identifier == entityName)
-                    {
-                        return x;
-                    }
+                    return x;
                 }
             }
 
@@ -352,17 +416,15 @@ namespace LinkeD365.FlowToVisio
                 grdFlows.Columns[columnIndex].HeaderCell.SortGlyphDirection = SortOrder.Ascending;
                 return SortOrder.Ascending;
             }
-            else
-            {
-                grdFlows.Columns[columnIndex].HeaderCell.SortGlyphDirection = SortOrder.Descending;
-                return SortOrder.Descending;
-            }
+
+            grdFlows.Columns[columnIndex].HeaderCell.SortGlyphDirection = SortOrder.Descending;
+            return SortOrder.Descending;
         }
 
         private void grdFlows_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
             if (grdFlows.Columns[e.ColumnIndex].SortMode == DataGridViewColumnSortMode.NotSortable) return;
-            SortOrder sortOrder = GetSortOrder(e.ColumnIndex);
+            var sortOrder = GetSortOrder(e.ColumnIndex);
 
             SortGrid(grdFlows.Columns[e.ColumnIndex].Name, sortOrder);
             // string strColumnName
@@ -371,7 +433,7 @@ namespace LinkeD365.FlowToVisio
 
         private void SortGrid(string name, SortOrder sortOrder)
         {
-            List<FlowDefinition> sortingFlows = (List<FlowDefinition>)grdFlows.DataSource;
+            var sortingFlows = (List<FlowDefinition>)grdFlows.DataSource;
             sortingFlows.Sort(new FlowDefComparer(name, sortOrder));
             grdFlows.DataSource = null;
             grdFlows.DataSource = sortingFlows;
@@ -384,7 +446,9 @@ namespace LinkeD365.FlowToVisio
             //gridFlows.DataSource = null;
             if (!string.IsNullOrEmpty(textSearch.Text))
             {
-                grdFlows.DataSource = flows.Where(flw => flw.Name.ToLower().Contains(textSearch.Text.ToLower())).ToList();//.Entities.Where(ent => ent.Attributes["name"].ToString().ToLower().Contains(textSearch.Text));
+                grdFlows.DataSource =
+                    flows.Where(flw => flw.Name.ToLower().Contains(textSearch.Text.ToLower()))
+                        .ToList(); //.Entities.Where(ent => ent.Attributes["name"].ToString().ToLower().Contains(textSearch.Text));
             }
             else
             {
@@ -425,8 +489,6 @@ namespace LinkeD365.FlowToVisio
             Utils.Comments = comments.Entities.Select(com => new Comment(com)).OrderBy(cmt => cmt.Kind).ToList();
         }
 
-        private HttpClient _client;
-
         private void btnConnectCDS_Click(object sender, EventArgs e)
         {
             ExecuteMethod(LoadFlows);
@@ -450,7 +512,7 @@ namespace LinkeD365.FlowToVisio
                 }
                 else
                 {
-                    DataGridViewImageColumn history = new DataGridViewImageColumn();
+                    var history = new DataGridViewImageColumn();
                     history.Width = 20;
                     history.HeaderText = "History";
                     history.Name = "history";
@@ -510,14 +572,15 @@ namespace LinkeD365.FlowToVisio
         {
             if (grdFlows.Columns[e.ColumnIndex].Name == "history" && e.RowIndex >= 0)
             {
-                FlowDefinition flow = grdFlows.Rows[e.RowIndex].DataBoundItem as FlowDefinition;
+                var flow = grdFlows.Rows[e.RowIndex].DataBoundItem as FlowDefinition;
                 GetAllFlowRuns(flow);
             }
         }
 
         private void grdFlows_CellMouseEnter(object sender, DataGridViewCellEventArgs e)
         {
-            grdFlows.Cursor = e.ColumnIndex < 0 ? Cursors.Default : (grdFlows.Columns[e.ColumnIndex].Name == "history") ? Cursors.Hand : Cursors.Default;
+            grdFlows.Cursor = e.ColumnIndex < 0 ? Cursors.Default :
+                grdFlows.Columns[e.ColumnIndex].Name == "history" ? Cursors.Hand : Cursors.Default;
         }
     }
 }
