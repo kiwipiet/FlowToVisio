@@ -37,6 +37,9 @@
     <Reference Include="DotNetGraph, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\DotNetGraph.2.7.0\lib\netstandard2.0\DotNetGraph.dll</HintPath>
     </Reference>
+    <Reference Include="JetBrains.Annotations, Version=4242.42.42.42, Culture=neutral, PublicKeyToken=1010a0d8d6380325, processorArchitecture=MSIL">
+      <HintPath>..\packages\JetBrains.Annotations.2022.3.1\lib\net20\JetBrains.Annotations.dll</HintPath>
+    </Reference>
     <Reference Include="McTools.Xrm.Connection, Version=1.2022.10.54, Culture=neutral, PublicKeyToken=96037217801d9658, processorArchitecture=MSIL">
       <HintPath>..\packages\MscrmTools.Xrm.Connection.1.2022.10.54\lib\net462\McTools.Xrm.Connection.dll</HintPath>
     </Reference>
@@ -330,9 +333,10 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
-      IF NOT EXIST "$(TargetDir)Plugins" mkdir "$(TargetDir)Plugins"
+      IF NOT EXIST "$(TargetDir)Plugins" mkdir "$(TargetDir)Plugins/Plugins"
       IF $(ConfigurationName) == Release "$(SolutionDir)packages\ILMerge.3.0.41\tools\net452\ILMerge.exe" /targetplatform:v4,"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2" /lib:"C:\Windows\Microsoft.Net\Framework64\v4.0.30319" /out:"$(TargetDir)Plugins\$(TargetFileName)" $(TargetFileName) xrmtb.XrmToolBox.Controls.dll
-      IF $(ConfigurationName) == Debug COPY /Y "$(TargetFileName)" "$(TargetDir)Plugins"
+      IF $(ConfigurationName) == Debug COPY /Y "$(TargetName).dll" "$(TargetDir)Plugins/Plugins"
+IF $(ConfigurationName) == Debug COPY /Y "$(TargetName).pdb" "$(TargetDir)Plugins/Plugins"
 </PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

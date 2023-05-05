@@ -143,8 +143,6 @@ namespace LinkeD365.FlowToVisio
                 if (selectFlow.Solution)
                 {
                     PopulateComment(selectFlow);
-                    // flowObject
-                    // = JObject.Parse(selectFlow.Definition);
                     GenerateVisio(saveDialog.FileName, selectFlow, 1);
                 }
                 else
@@ -170,13 +168,21 @@ namespace LinkeD365.FlowToVisio
                 {
                     var selFlow = (FlowDefinition)selectedRow.DataBoundItem;
                     flowDefinitions.Add(selFlow);
-                    char[] invalidPathChars = Path.GetInvalidPathChars();
+                    var invalidPathChars = Path.GetInvalidPathChars().ToList();
+                    invalidPathChars.Add(':');
+                    invalidPathChars.Add('/');
+                    invalidPathChars.Add('\\');
+                    invalidPathChars.Add('?');
                     string fileName = selFlow.Name;
                     foreach (char invalidPathChar in invalidPathChars)
                     {
                         fileName = fileName.Replace(invalidPathChar, '_');
                     }
-                    var fileFullPath = Path.Combine(fileinfo.Directory.FullName, selFlow.Status, $"{fileName}.vsdx");
+                    var fileFullPath = Path.Combine(fileinfo.Directory.FullName, selFlow.CategoryDescription, selFlow.Status, $"{fileName}.vsdx");
+                    if (!new FileInfo(fileFullPath).Directory.Exists)
+                    {
+                        new FileInfo(fileFullPath).Directory.Create();
+                    }
                     if (!File.Exists(fileFullPath))
                     {
                         try
@@ -190,7 +196,14 @@ namespace LinkeD365.FlowToVisio
                             {
                                 LoadFlow(selFlow, fileFullPath, 1);
                             }
-                            CompleteVisio(fileFullPath, false);
+
+                            switch (selFlow.Category)
+                            {
+                                case 5:
+                                    CompleteVisio(fileFullPath, false);
+                                    break;
+                            }
+                            
 
                         }
                         catch (Exception exception)
@@ -200,7 +213,6 @@ namespace LinkeD365.FlowToVisio
                         }
                     }
                 }
-
                 GenerateDotGraph(flowDefinitions, fileinfo.Directory);
             }
             else if (false)
@@ -238,6 +250,10 @@ namespace LinkeD365.FlowToVisio
             var directedGraph = new DotGraph("Flows", true);
             foreach (var flowDefinition in flowDefinitions)
             {
+                if (flowDefinition.Category != 5) // only modern flow for now
+                {
+                    continue;
+                }
                 if (flowDefinition.Status == "Draft")
                 {
                     continue;
@@ -255,7 +271,7 @@ namespace LinkeD365.FlowToVisio
                 };
                 directedGraph.Elements.Add(myNode);
 
-                var flowObject = JObject.Parse(flowDefinition.Definition);
+                var flowObject = flowDefinition.DefinitionJObject;
                 var triggerProperty = flowObject["properties"]?["definition"]?["triggers"].FirstOrDefault() as JProperty;
                 if (triggerProperty != null)
                 {

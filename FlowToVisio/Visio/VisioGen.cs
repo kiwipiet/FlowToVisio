@@ -35,31 +35,40 @@ namespace LinkeD365.FlowToVisio
                 fileinfo.Directory.Create();
             }
 
-            CreateVisio(fileName);
-            JObject flowObject = JObject.Parse(flow.Definition);
+            switch (flow.Category)
+            {
+                case 2:
+                    File.WriteAllText(Path.Combine(fileinfo.Directory.FullName, fileinfo.Name.Replace(fileinfo.Extension, ".xml")), flow.Definition);
+                    break;
+                case 5:
+                {
+                    CreateVisio(fileName);
 
-            File.WriteAllText(Path.Combine(fileinfo.Directory.FullName, fileinfo.Name.Replace(fileinfo.Extension, ".json")), flowObject.ToString(Formatting.Indented));
+                    File.WriteAllText(Path.Combine(fileinfo.Directory.FullName, fileinfo.Name.Replace(fileinfo.Extension, ".json")), flow.DefinitionJObject.ToString(Formatting.Indented));
 
-            //CreateConnections();
-            Utils.Root = flowObject;
-            Connection.SetAPIs(flowObject);
-            var triggerProperty = flowObject["properties"]["definition"]["triggers"].First() as JProperty;
+                    //CreateConnections();
+                    Utils.Root = flow.DefinitionJObject;
+                    Connection.SetAPIs(flow.DefinitionJObject);
+                    var triggerProperty = flow.DefinitionJObject["properties"]["definition"]["triggers"].First() as JProperty;
 
-            var triggerShape = Utils.AddAction(triggerProperty, null, 0, 1);
-            Utils.AddComment(triggerShape);
-            if (flowObject["properties"]["definition"]["actions"].Children<JProperty>().Any(a => !a.Value["runAfter"].HasValues))
-                Utils.AddActions(flowObject["properties"]["definition"]["actions"].Children<JProperty>().Where(a => !a.Value["runAfter"].HasValues), triggerShape);
+                    var triggerShape = Utils.AddAction(triggerProperty, null, 0, 1);
+                    Utils.AddComment(triggerShape);
+                    if (flow.DefinitionJObject["properties"]["definition"]["actions"].Children<JProperty>().Any(a => !a.Value["runAfter"].HasValues))
+                        Utils.AddActions(flow.DefinitionJObject["properties"]["definition"]["actions"].Children<JProperty>().Where(a => !a.Value["runAfter"].HasValues), triggerShape);
 
-            foreach (var shapeName in Utils.VisioTemplates)
-                triggerShape.GetTemplateShape(shapeName).Remove();
+                    foreach (var shapeName in Utils.VisioTemplates)
+                        triggerShape.GetTemplateShape(shapeName).Remove();
 
-            //SaveXDocumentToPart(page, Utils.XMLPage);
-            CreateNewPage(package, pages, Utils.XMLPage, //new Uri( Uri.EscapeUriString($"/visio/pages/{flow.Name.Replace(' ','_')}.xml"),UriKind.Relative),
-                new Uri(Uri.EscapeUriString($"/visio/pages/flowPage{flowCount}.xml"), UriKind.Relative), page.ContentType, "http://schemas.microsoft.com/visio/2010/relationships/page", flow.Name);
-            Utils.Ai.WriteEvent(logicApp ? "Logic App Actions" : "Flow Actions", Utils.actionCount);
-            Utils.totalVisio += 1;
-            Utils.totalActions += Utils.actionCount;
-            Utils.actionCount = 0;
+                    //SaveXDocumentToPart(page, Utils.XMLPage);
+                    CreateNewPage(package, pages, Utils.XMLPage, //new Uri( Uri.EscapeUriString($"/visio/pages/{flow.Name.Replace(' ','_')}.xml"),UriKind.Relative),
+                        new Uri(Uri.EscapeUriString($"/visio/pages/flowPage{flowCount}.xml"), UriKind.Relative), page.ContentType, "http://schemas.microsoft.com/visio/2010/relationships/page", flow.Name);
+                    Utils.Ai.WriteEvent(logicApp ? "Logic App Actions" : "Flow Actions", Utils.actionCount);
+                    Utils.totalVisio += 1;
+                    Utils.totalActions += Utils.actionCount;
+                    Utils.actionCount = 0;
+                    break;
+                }
+            }
         }
 
         public void CompleteVisio(string fileName, bool startVisio = true)
