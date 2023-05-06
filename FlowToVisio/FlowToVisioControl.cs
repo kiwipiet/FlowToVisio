@@ -6,6 +6,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Windows.Forms;
 using DotNetGraph;
+using DotNetGraph.Attributes;
+using DotNetGraph.Core;
 using DotNetGraph.Edge;
 using DotNetGraph.Extensions;
 using DotNetGraph.Node;
@@ -255,11 +257,25 @@ namespace LinkeD365.FlowToVisio
             }
         }
 
-        private void GenerateDotGraph(List<FlowDefinition> flowDefinitions, DirectoryInfo directory)
+        private static void GenerateDotGraph(List<FlowDefinition> flowDefinitions, DirectoryInfo directory)
         {
             var directedGraph = new DotGraph("Flows", true);
+            AddModernFlows(flowDefinitions, directedGraph);
+            AddModernFlowCalls(flowDefinitions, directedGraph);
+            AddModernFlowOperationCalls(flowDefinitions, directedGraph);
+
+            string dot = directedGraph.Compile(true);
+            File.WriteAllText(Path.Combine(directory.FullName, "flows.dot"), dot);
+        }
+
+        private static void AddModernFlowOperationCalls(List<FlowDefinition> flowDefinitions, DotGraph directedGraph)
+        {
             foreach (var flowDefinition in flowDefinitions)
             {
+                //if (flowDefinition.Name == "OnDemandPowerAutomateErrorLogging")
+                //{
+                //    continue;
+                //}
                 if (flowDefinition.Category != 5) // only modern flow for now
                 {
                     continue;
@@ -270,7 +286,79 @@ namespace LinkeD365.FlowToVisio
                     continue;
                 }
 
-                var myNode = new DotNode(flowDefinition.Id)
+                var node = directedGraph.Elements
+                    .OfType<DotNode>()
+                    .FirstOrDefault(element => element.Identifier == flowDefinition.Id);
+
+                var actionsWithOperations = flowDefinition.DefinitionJObject.DescendantsAndSelf().OfType<JProperty>()
+                    .Where(o => o.Name == "actions" 
+                                // Get the leaf actions
+                                && o.Descendants().OfType<JProperty>().All(x => x.Name != "actions"))
+                    .ToList();
+                if (actionsWithOperations.Any())
+                {
+                    var operationId = actionsWithOperations.Descendants().OfType<JProperty>()
+                        .FirstOrDefault(x => x.Name == "operationId")?.Value.Value<string>();
+                    var entityName = actionsWithOperations.Descendants().OfType<JProperty>()
+                        .FirstOrDefault(x => x.Name == "entityName")?.Value.Value<string>();
+                    if (!string.IsNullOrWhiteSpace(operationId) && !string.IsNullOrWhiteSpace(entityName))
+                    {
+                        if (operationId == "CreateRecord" || operationId == "UpdateRecord")
+                        {
+                            var actionEdge = GetOrCreateEntityNode(directedGraph, entityName);
+                            if (actionEdge != null)
+                            {
+                                var operationEdge = new DotEdge(node, actionEdge)
+                                {
+                                    ArrowHead = DotEdgeArrowType.Dot,
+                                    ArrowTail = DotEdgeArrowType.Diamond,
+                                    Color = GetOperationIdColor(operationId),
+                                    FontColor = GetOperationIdColor(operationId),
+                                    Label = operationId,
+                                    Style = DotEdgeStyle.Dotted,
+                                    PenWidth = 1f
+                                };
+
+                                directedGraph.Elements.Add(operationEdge);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static DotFontColorAttribute GetOperationIdColor(string operationId)
+        {
+            switch (operationId)
+            {
+                case "CreateRecord":
+                    return Color.ForestGreen;
+                case "UpdateRecord":
+                    return Color.DarkMagenta;
+            }
+
+            return Color.Black;
+        }
+
+        private static void AddModernFlows(List<FlowDefinition> flowDefinitions, DotGraph directedGraph)
+        {
+            foreach (var flowDefinition in flowDefinitions)
+            {
+                //if (flowDefinition.Name == "OnDemandPowerAutomateErrorLogging")
+                //{
+                //    continue;
+                //}
+                if (flowDefinition.Category != 5) // only modern flow for now
+                {
+                    continue;
+                }
+
+                if (flowDefinition.Status == "Draft")
+                {
+                    continue;
+                }
+
+                var modernFlowNode = new DotNode(flowDefinition.Id)
                 {
                     Shape = DotNodeShape.Box,
                     Label = flowDefinition.Name,
@@ -279,9 +367,12 @@ namespace LinkeD365.FlowToVisio
                     Style = DotNodeStyle.Solid,
                     Width = 0.5f,
                     Height = 0.5f,
-                    PenWidth = 1f
+                    PenWidth = 1f,
+                    Color = Color.Coral
                 };
-                directedGraph.Elements.Add(myNode);
+                modernFlowNode.SetCustomAttribute("Attribute1", "Test Attribute Value");
+                modernFlowNode.SetCustomAttribute("Type", "Modern Flow");
+                directedGraph.Elements.Add(modernFlowNode);
 
                 var flowObject = flowDefinition.DefinitionJObject;
                 var triggerProperty =
@@ -291,7 +382,7 @@ namespace LinkeD365.FlowToVisio
                     var triggerParameters = triggerProperty.Value["inputs"]?["parameters"];
                     if (triggerParameters != null)
                     {
-                        var triggerNode = GetOrCreateTriggerNode(directedGraph, triggerParameters);
+                        var triggerNode = GetOrCreateEntityNode(directedGraph, (triggerParameters["subscriptionRequest/entityname"] as JValue).Value.ToString());
                         if (triggerNode != null)
                         {
                             var filter = (triggerParameters["subscriptionRequest/filterexpression"] as JValue)?.Value
@@ -299,26 +390,31 @@ namespace LinkeD365.FlowToVisio
                             if (filter == null)
                                 filter = (triggerParameters["subscriptionRequest/filteringattributes"] as JValue)?.Value
                                     .ToString();
-                            if (filter != null)
+                            if (filter == null)
                             {
-                                var myEdge = new DotEdge(myNode, triggerNode)
-                                {
-                                    ArrowHead = DotEdgeArrowType.Normal,
-                                    ArrowTail = DotEdgeArrowType.Diamond,
-                                    Color = Color.Firebrick,
-                                    FontColor = Color.Black,
-                                    Label = filter.Replace(" or ", "\nor ").Replace(" and ", "\nand "),
-                                    Style = DotEdgeStyle.Dashed,
-                                    PenWidth = 1.5f
-                                };
-
-                                directedGraph.Elements.Add(myEdge);
+                                filter = string.Empty;
                             }
+
+                            var myEdge = new DotEdge(triggerNode, modernFlowNode)
+                            {
+                                ArrowHead = DotEdgeArrowType.Normal,
+                                ArrowTail = DotEdgeArrowType.Diamond,
+                                Color = Color.Firebrick,
+                                FontColor = Color.Black,
+                                Label = filter.Replace(" or ", "\nor ").Replace(" and ", "\nand "),
+                                Style = DotEdgeStyle.Dashed,
+                                PenWidth = 1.5f
+                            };
+
+                            directedGraph.Elements.Add(myEdge);
                         }
                     }
                 }
             }
+        }
 
+        private static void AddModernFlowCalls(List<FlowDefinition> flowDefinitions, DotGraph directedGraph)
+        {
             foreach (var flowDefinition in flowDefinitions)
             {
                 if (flowDefinition.Category != 5) // only modern flow for now
@@ -353,7 +449,7 @@ namespace LinkeD365.FlowToVisio
                             .FirstOrDefault(element => element.Identifier == workflowReference);
                         if (childNode != null)
                         {
-                            var myEdge = new DotEdge(node, childNode)
+                            var callModernFlowEdge = new DotEdge(node, childNode)
                             {
                                 ArrowHead = DotEdgeArrowType.Normal,
                                 ArrowTail = DotEdgeArrowType.Diamond,
@@ -364,20 +460,15 @@ namespace LinkeD365.FlowToVisio
                                 PenWidth = 1.5f
                             };
 
-                            directedGraph.Elements.Add(myEdge);
+                            directedGraph.Elements.Add(callModernFlowEdge);
                         }
                     }
                 }
             }
-
-            string dot = directedGraph.Compile(true);
-            File.WriteAllText(Path.Combine(directory.FullName, "flows.dot"), dot);
         }
 
-        private static DotNode GetOrCreateTriggerNode(DotGraph directedGraph, JToken triggerParameters)
+        private static DotNode GetOrCreateEntityNode(DotGraph directedGraph, string entityName)
         {
-            var entityName = (triggerParameters["subscriptionRequest/entityname"] as JValue).Value.ToString();
-
             foreach (var directedGraphElement in directedGraph.Elements)
             {
                 if (directedGraphElement is DotNode x && x.Identifier == entityName)
@@ -392,6 +483,7 @@ namespace LinkeD365.FlowToVisio
                 Label = entityName,
                 FillColor = Color.Coral,
                 FontColor = Color.Firebrick,
+                Color = Color.Firebrick,
                 Style = DotNodeStyle.Solid,
                 Width = 0.5f,
                 Height = 0.5f,
