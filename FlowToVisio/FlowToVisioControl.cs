@@ -272,10 +272,10 @@ namespace LinkeD365.FlowToVisio
         {
             foreach (var flowDefinition in flowDefinitions)
             {
-                //if (flowDefinition.Name == "OnDemandPowerAutomateErrorLogging")
-                //{
-                //    continue;
-                //}
+                if (flowDefinition.Name == "OnDemandPowerAutomateErrorLogging")
+                {
+                    continue;
+                }
                 if (flowDefinition.Category != 5) // only modern flow for now
                 {
                     continue;
@@ -290,37 +290,25 @@ namespace LinkeD365.FlowToVisio
                     .OfType<DotNode>()
                     .FirstOrDefault(element => element.Identifier == flowDefinition.Id);
 
-                var actionsWithOperations = flowDefinition.DefinitionJObject.DescendantsAndSelf().OfType<JProperty>()
-                    .Where(o => o.Name == "actions" 
-                                // Get the leaf actions
-                                && o.Descendants().OfType<JProperty>().All(x => x.Name != "actions"))
-                    .ToList();
-                if (actionsWithOperations.Any())
+                foreach (var operation in flowDefinition.Operations)
                 {
-                    var operationId = actionsWithOperations.Descendants().OfType<JProperty>()
-                        .FirstOrDefault(x => x.Name == "operationId")?.Value.Value<string>();
-                    var entityName = actionsWithOperations.Descendants().OfType<JProperty>()
-                        .FirstOrDefault(x => x.Name == "entityName")?.Value.Value<string>();
-                    if (!string.IsNullOrWhiteSpace(operationId) && !string.IsNullOrWhiteSpace(entityName))
+                    if (operation.OperationId == "CreateRecord" || operation.OperationId == "UpdateRecord")
                     {
-                        if (operationId == "CreateRecord" || operationId == "UpdateRecord")
+                        var actionEdge = GetOrCreateEntityNode(directedGraph, operation.EntityName);
+                        if (actionEdge != null)
                         {
-                            var actionEdge = GetOrCreateEntityNode(directedGraph, entityName);
-                            if (actionEdge != null)
+                            var operationEdge = new DotEdge(node, actionEdge)
                             {
-                                var operationEdge = new DotEdge(node, actionEdge)
-                                {
-                                    ArrowHead = DotEdgeArrowType.Dot,
-                                    ArrowTail = DotEdgeArrowType.Diamond,
-                                    Color = GetOperationIdColor(operationId),
-                                    FontColor = GetOperationIdColor(operationId),
-                                    Label = operationId,
-                                    Style = DotEdgeStyle.Dotted,
-                                    PenWidth = 1f
-                                };
+                                ArrowHead = DotEdgeArrowType.Dot,
+                                ArrowTail = DotEdgeArrowType.Diamond,
+                                Color = GetOperationIdColor(operation.OperationId),
+                                FontColor = GetOperationIdColor(operation.OperationId),
+                                Label = operation.OperationId,
+                                Style = DotEdgeStyle.Dotted,
+                                PenWidth = 1f
+                            };
 
-                                directedGraph.Elements.Add(operationEdge);
-                            }
+                            directedGraph.Elements.Add(operationEdge);
                         }
                     }
                 }
@@ -344,10 +332,10 @@ namespace LinkeD365.FlowToVisio
         {
             foreach (var flowDefinition in flowDefinitions)
             {
-                //if (flowDefinition.Name == "OnDemandPowerAutomateErrorLogging")
-                //{
-                //    continue;
-                //}
+                if (flowDefinition.Name == "OnDemandPowerAutomateErrorLogging")
+                {
+                    continue;
+                }
                 if (flowDefinition.Category != 5) // only modern flow for now
                 {
                     continue;
@@ -370,30 +358,18 @@ namespace LinkeD365.FlowToVisio
                     PenWidth = 1f,
                     Color = Color.Coral
                 };
-                modernFlowNode.SetCustomAttribute("Attribute1", "Test Attribute Value");
-                modernFlowNode.SetCustomAttribute("Type", "Modern Flow");
+                //modernFlowNode.SetCustomAttribute("Attribute1", "Test Attribute Value");
+                //modernFlowNode.SetCustomAttribute("Type", "Modern Flow");
                 directedGraph.Elements.Add(modernFlowNode);
 
-                var flowObject = flowDefinition.DefinitionJObject;
-                var triggerProperty =
-                    flowObject["properties"]?["definition"]?["triggers"].FirstOrDefault() as JProperty;
-                if (triggerProperty != null)
+                if (flowDefinition.HasTriggerEntity)
                 {
-                    var triggerParameters = triggerProperty.Value["inputs"]?["parameters"];
-                    if (triggerParameters != null)
-                    {
-                        var triggerNode = GetOrCreateEntityNode(directedGraph, (triggerParameters["subscriptionRequest/entityname"] as JValue).Value.ToString());
+                        var triggerNode = GetOrCreateEntityNode(directedGraph, flowDefinition.TriggerEntity);
                         if (triggerNode != null)
                         {
-                            var filter = (triggerParameters["subscriptionRequest/filterexpression"] as JValue)?.Value
-                                .ToString();
-                            if (filter == null)
-                                filter = (triggerParameters["subscriptionRequest/filteringattributes"] as JValue)?.Value
-                                    .ToString();
-                            if (filter == null)
-                            {
-                                filter = string.Empty;
-                            }
+                            // TODO : need to think of how to represent this when there is both TriggerFilterExpression and TriggerFilteringAttributes
+                            var filter = (flowDefinition.TriggerFilterExpression ?? flowDefinition.TriggerFilteringAttributes) ??
+                                         string.Empty;
 
                             var myEdge = new DotEdge(triggerNode, modernFlowNode)
                             {
@@ -408,7 +384,6 @@ namespace LinkeD365.FlowToVisio
 
                             directedGraph.Elements.Add(myEdge);
                         }
-                    }
                 }
             }
         }

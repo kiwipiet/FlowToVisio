@@ -45,13 +45,13 @@ namespace LinkeD365.FlowToVisio
                         {
                             Id = flowRecord["workflowid"].ToString(),
                             Name = flowRecord["name"].ToString(),
+                            Category = ((OptionSetValue)flowRecord["category"]).Value,
                             Definition = !flowRecord.Attributes.Contains("clientdata") ? string.Empty : flowRecord["clientdata"].ToString(),
                             Description = !flowRecord.Attributes.Contains("description") ? string.Empty : flowRecord["description"].ToString(),
                             Solution = true,
                             Managed = (bool)flowRecord["ismanaged"],
                             UniqueId = flowRecord["workflowidunique"].ToString(),
-                            Status = ((OptionSetValue)flowRecord["statuscode"]).Value == 1 ? "Draft" : "Activated",
-                            Category = ((OptionSetValue)flowRecord["category"]).Value
+                            Status = ((OptionSetValue)flowRecord["statuscode"]).Value == 1 ? "Draft" : "Activated"
                         });
                     }
 

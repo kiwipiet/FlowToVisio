@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Soluton Items", "Soluton It
 		FlowToVisio.nuspec = FlowToVisio.nuspec
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowToVisioTests", "FlowToVisioTests\FlowToVisioTests.csproj", "{FC9792C6-49F5-4844-B0F9-12B6522FEC42}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{07FA101F-0839-4B46-8136-8D43F57A82FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07FA101F-0839-4B46-8136-8D43F57A82FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07FA101F-0839-4B46-8136-8D43F57A82FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC9792C6-49F5-4844-B0F9-12B6522FEC42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC9792C6-49F5-4844-B0F9-12B6522FEC42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC9792C6-49F5-4844-B0F9-12B6522FEC42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC9792C6-49F5-4844-B0F9-12B6522FEC42}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
